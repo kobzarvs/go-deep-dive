@@ -10,6 +10,16 @@ import SliceScenariosDebugger from './components/SliceScenariosDebugger.vue'
 import SliceSharedDemo from './components/SliceSharedDemo.vue'
 import SliceNewDemo from './components/SliceNewDemo.vue'
 import CodeDebugger from './components/CodeDebugger.vue'
+import StackLayoutDiagram from './components/StackLayoutDiagram.vue'
+import StackGrowthSimulator from './components/StackGrowthSimulator.vue'
+import EscapeAnalysisPlayground from './components/EscapeAnalysisPlayground.vue'
+import GMPModelDiagram from './components/GMPModelDiagram.vue'
+import WorkStealingSimulator from './components/WorkStealingSimulator.vue'
+import SchedulerTraceExplorer from './components/SchedulerTraceExplorer.vue'
+import GCPhaseSimulator from './components/GCPhaseSimulator.vue'
+import TricolorMarkingDemo from './components/TricolorMarkingDemo.vue'
+import GCTraceExplorer from './components/GCTraceExplorer.vue'
+import GCPacingCalculator from './components/GCPacingCalculator.vue'
 
 export default {
   extends: DefaultTheme,
@@ -23,5 +33,15 @@ export default {
     app.component('SliceSharedDemo', SliceSharedDemo)
     app.component('SliceNewDemo', SliceNewDemo)
     app.component('CodeDebugger', CodeDebugger)
+    app.component('StackLayoutDiagram', StackLayoutDiagram)
+    app.component('StackGrowthSimulator', StackGrowthSimulator)
+    app.component('EscapeAnalysisPlayground', EscapeAnalysisPlayground)
+    app.component('GMPModelDiagram', GMPModelDiagram)
+    app.component('WorkStealingSimulator', WorkStealingSimulator)
+    app.component('SchedulerTraceExplorer', SchedulerTraceExplorer)
+    app.component('GCPhaseSimulator', GCPhaseSimulator)
+    app.component('TricolorMarkingDemo', TricolorMarkingDemo)
+    app.component('GCTraceExplorer', GCTraceExplorer)
+    app.component('GCPacingCalculator', GCPacingCalculator)
   }
 } satisfies Theme

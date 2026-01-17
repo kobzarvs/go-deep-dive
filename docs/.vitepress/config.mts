@@ -18,7 +18,7 @@ export default defineConfig({
     nav: [
       { text: 'Главная', link: '/' },
       { text: 'Содержание', link: '/01-runtime/' },
-      { text: 'GitHub', link: 'https://github.com/YOUR_USERNAME/go-deep-dive' }
+      { text: 'GitHub', link: 'https://github.com/kobzarvs/go-deep-dive' }
     ],
 
     sidebar: [
@@ -126,7 +126,7 @@ export default defineConfig({
     ],
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/YOUR_USERNAME/go-deep-dive' }
+      { icon: 'github', link: 'https://github.com/kobzarvs/go-deep-dive' }
     ],
     
     search: {
@@ -139,7 +139,7 @@ export default defineConfig({
     },
     
     editLink: {
-      pattern: 'https://github.com/YOUR_USERNAME/go-deep-dive/edit/main/docs/:path',
+      pattern: 'https://github.com/kobzarvs/go-deep-dive/edit/main/docs/:path',
       text: 'Редактировать на GitHub'
     },
     

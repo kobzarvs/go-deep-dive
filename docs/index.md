@@ -14,7 +14,7 @@ hero:
       link: /01-runtime/
     - theme: alt
       text: GitHub
-      link: https://github.com/YOUR_USERNAME/go-deep-dive
+      link: https://github.com/kobzarvs/go-deep-dive
 
 features:
   - icon: ⚡

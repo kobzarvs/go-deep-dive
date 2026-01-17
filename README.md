@@ -6,7 +6,7 @@ Go 1.25 для Senior разработчиков — runtime, memory, concurrenc
 
 ```bash
 # Клонировать
-git clone https://github.com/YOUR_USERNAME/go-deep-dive.git
+git clone https://github.com/kobzarvs/go-deep-dive.git
 cd go-deep-dive
 
 # Установить зависимости

@@ -1,0 +1,60 @@
+/* ASCII диаграммы — плотный line-height для псевдографики */
+.vp-doc div[class*="language-"] pre code {
+  line-height: 1.2;
+}
+
+/* Расширяем layout */
+
+:root {
+  /* Левый sidebar — уже */
+  --vp-sidebar-width: 240px;
+}
+
+/* Правый TOC — принудительно шире */
+.VPDoc .aside {
+  width: 300px !important;
+  padding-left: 32px !important;
+}
+
+.VPDoc .aside-container {
+  width: 300px !important;
+}
+
+.VPDoc aside {
+  width: 300px !important;
+}
+
+div.aside-container {
+  width: 300px !important;
+}
+
+/* Расширяем контент на больших экранах */
+@media (min-width: 1440px) {
+  .VPDoc:not(.has-sidebar) .content-container,
+  .VPDoc.has-sidebar .content-container {
+    max-width: 900px !important;
+  }
+
+  /* Контейнер контента */
+  .VPDoc .container {
+    max-width: 100% !important;
+  }
+}
+
+/* Ещё шире на очень больших экранах */
+@media (min-width: 1600px) {
+  .VPDoc.has-sidebar .content-container {
+    max-width: 1000px !important;
+  }
+}
+
+/* Правая колонка TOC — не обрезаем текст */
+.VPDocAsideOutline .outline-link {
+  white-space: normal;
+  line-height: 1.4;
+}
+
+/* Скрываем дефолтный lastUpdated — используем кастомный */
+.VPDocFooter .VPLastUpdated {
+  display: none;
+}

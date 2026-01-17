@@ -144,12 +144,10 @@ export default defineConfig({
     },
     
     lastUpdated: {
-      text: 'Обновлено',
-      formatOptions: {
-        dateStyle: 'short',
-        timeStyle: 'short'
-      }
+      text: 'Обновлено'
     },
+
+    // Дата форматируется кастомным компонентом LastUpdated.vue
     
     footer: {
       message: 'Go Deep Dive — книга для Senior разработчиков',

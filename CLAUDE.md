@@ -51,3 +51,8 @@ docs/                        # VitePress content (Markdown)
 1. Создать `.md` файл в соответствующей папке `docs/XX-topic/`
 2. Добавить ссылку в `docs/.vitepress/config.mts` → `sidebar` в нужную секцию
 3. Vue компоненты для визуализаций размещать в `components/`
+
+## Important Rules
+
+- **НИКОГДА не запускать `npm run dev`** — dev server всегда запущен у пользователя
+- `npm run build` — можно запускать для проверки сборки

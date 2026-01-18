@@ -58,3 +58,518 @@ div.aside-container {
 .VPDocFooter .VPLastUpdated {
   display: none;
 }
+
+/* Hero section с фоновым изображением */
+.VPHero {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+/* Контейнер hero с фоном */
+.VPHero .container {
+  position: relative;
+  background-image: url('/images/go_gopher_deep_dive.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: 16px;
+  padding: 32px;
+  margin: 24px auto 0;
+  max-width: 1152px;
+}
+
+/* Затемнение для читаемости текста */
+.VPHero .container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(255, 255, 255, 0) 90%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  z-index: 0;
+}
+
+/* Контент поверх затемнения */
+.VPHero .main {
+  position: relative;
+  z-index: 1;
+}
+
+/* Dark mode */
+.dark .VPHero .container::before {
+  background: linear-gradient(
+    135deg,
+    rgba(30, 30, 32, 0.95) 0%,
+    rgba(30, 30, 32, 0.88) 40%,
+    rgba(30, 30, 32, 0.65) 100%
+  );
+}
+
+/* Hero text styling для контраста */
+.VPHero .name {
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.5);
+}
+
+.dark .VPHero .name {
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.VPHero .text {
+  text-shadow: 0 1px 5px rgba(255, 255, 255, 0.3);
+}
+
+.dark .VPHero .text {
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+}
+
+/* Отступ по бокам на мобильных */
+@media (max-width: 960px) {
+  .VPHero .container {
+    margin: 0 24px;
+    padding: 32px 24px;
+  }
+}
+
+.VPHomeHero {
+  margin-top: 0 !important;
+  padding-top: 0px !important;
+  padding-bottom: 16px !important;
+}
+
+/* Feature cards hover эффект */
+.VPFeature {
+  transition: all 0.25s ease;
+  cursor: pointer;
+  border-radius: 16px;
+}
+
+.VPFeature:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+  border-color: var(--vp-c-brand-1) !important;
+}
+
+.dark .VPFeature:hover {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+}
+
+.VPFeature .link-text {
+  color: var(--vp-c-brand-1);
+  font-weight: 500;
+}
+
+/* Runtime & Memory карточка с фоном */
+.VPFeatures .items > .item:nth-child(1) .box {
+  position: relative;
+  background-image: url('/images/runtime_and_memory.png');
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+  min-height: 230px;
+  border-radius: 12px;
+}
+
+.VPFeatures .items > .item:nth-child(1) .box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.0) 100%
+  );
+  z-index: 0;
+}
+
+.dark .VPFeatures .items > .item:nth-child(1) .box::before {
+  background: linear-gradient(
+    135deg,
+    rgba(30, 30, 32, 0.92) 0%,
+    rgba(30, 30, 32, 0.85) 50%,
+    rgba(30, 30, 32, 0.7) 100%
+  );
+}
+
+.VPFeatures .items > .item:nth-child(1) .box > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Runtime & Memory — скрываем title, link и icon, белый текст с подложкой */
+.VPFeatures .items > .item:nth-child(1) .title {
+  display: none;
+}
+
+.VPFeatures .items > .item:nth-child(1) .details {
+  color: white;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px 16px;
+  border-radius: 8px;
+  backdrop-filter: blur(1px);
+  max-height: 72px;
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  left: 8px;
+}
+
+.VPFeatures .items > .item:nth-child(1) .link-text {
+  display: none;
+}
+
+.VPFeatures .items > .item:nth-child(1) .icon {
+  display: none;
+}
+
+/* Concurrency карточка с фоном */
+.VPFeatures .items > .item:nth-child(2) .box {
+  position: relative;
+  background-image: url('/images/concurrency.png');
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+  min-height: 230px;
+  border-radius: 12px;
+}
+
+.VPFeatures .items > .item:nth-child(2) .box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.0) 100%
+  );
+  z-index: 0;
+}
+
+.dark .VPFeatures .items > .item:nth-child(2) .box::before {
+  background: linear-gradient(
+    135deg,
+    rgba(30, 30, 32, 0.92) 0%,
+    rgba(30, 30, 32, 0.85) 50%,
+    rgba(30, 30, 32, 0.7) 100%
+  );
+}
+
+.VPFeatures .items > .item:nth-child(2) .box > * {
+  position: relative;
+  z-index: 1;
+}
+
+.VPFeatures .items > .item:nth-child(2) .title {
+  display: none;
+}
+
+.VPFeatures .items > .item:nth-child(2) .details {
+  color: white;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px 16px;
+  border-radius: 8px;
+  backdrop-filter: blur(1px);
+  max-height: 72px;
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  left: 8px;
+}
+
+.VPFeatures .items > .item:nth-child(2) .link-text {
+  display: none;
+}
+
+.VPFeatures .items > .item:nth-child(2) .icon {
+  display: none;
+}
+
+/* Data Structures карточка с фоном */
+.VPFeatures .items > .item:nth-child(3) .box {
+  position: relative;
+  background-image: url('/images/data_structures.png');
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+  min-height: 230px;
+  border-radius: 12px;
+}
+
+.VPFeatures .items > .item:nth-child(3) .box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.0) 100%
+  );
+  z-index: 0;
+}
+
+.dark .VPFeatures .items > .item:nth-child(3) .box::before {
+  background: linear-gradient(
+    135deg,
+    rgba(30, 30, 32, 0.92) 0%,
+    rgba(30, 30, 32, 0.85) 50%,
+    rgba(30, 30, 32, 0.7) 100%
+  );
+}
+
+.VPFeatures .items > .item:nth-child(3) .box > * {
+  position: relative;
+  z-index: 1;
+}
+
+.VPFeatures .items > .item:nth-child(3) .title {
+  display: none;
+}
+
+.VPFeatures .items > .item:nth-child(3) .details {
+  color: white;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px 16px;
+  border-radius: 8px;
+  backdrop-filter: blur(1px);
+  max-height: 72px;
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  left: 8px;
+}
+
+.VPFeatures .items > .item:nth-child(3) .link-text {
+  display: none;
+}
+
+.VPFeatures .items > .item:nth-child(3) .icon {
+  display: none;
+}
+
+/* Generics карточка с фоном */
+.VPFeatures .items > .item:nth-child(4) .box {
+  position: relative;
+  background-image: url('/images/generics.png');
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+  min-height: 230px;
+  border-radius: 12px;
+}
+
+.VPFeatures .items > .item:nth-child(4) .box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.0) 100%
+  );
+  z-index: 0;
+}
+
+.dark .VPFeatures .items > .item:nth-child(4) .box::before {
+  background: linear-gradient(
+    135deg,
+    rgba(30, 30, 32, 0.92) 0%,
+    rgba(30, 30, 32, 0.85) 50%,
+    rgba(30, 30, 32, 0.7) 100%
+  );
+}
+
+.VPFeatures .items > .item:nth-child(4) .box > * {
+  position: relative;
+  z-index: 1;
+}
+
+.VPFeatures .items > .item:nth-child(4) .title {
+  display: none;
+}
+
+.VPFeatures .items > .item:nth-child(4) .details {
+  color: white;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px 16px;
+  border-radius: 8px;
+  backdrop-filter: blur(1px);
+  max-height: 72px;
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  left: 8px;
+}
+
+.VPFeatures .items > .item:nth-child(4) .link-text {
+  display: none;
+}
+
+.VPFeatures .items > .item:nth-child(4) .icon {
+  display: none;
+}
+
+/* Stdlib Magic карточка с фоном */
+.VPFeatures .items > .item:nth-child(5) .box {
+  position: relative;
+  background-image: url('/images/stdlib_magic.png');
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+  min-height: 230px;
+  border-radius: 12px;
+}
+
+.VPFeatures .items > .item:nth-child(5) .box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.0) 100%
+  );
+  z-index: 0;
+}
+
+.dark .VPFeatures .items > .item:nth-child(5) .box::before {
+  background: linear-gradient(
+    135deg,
+    rgba(30, 30, 32, 0.92) 0%,
+    rgba(30, 30, 32, 0.85) 50%,
+    rgba(30, 30, 32, 0.7) 100%
+  );
+}
+
+.VPFeatures .items > .item:nth-child(5) .box > * {
+  position: relative;
+  z-index: 1;
+}
+
+.VPFeatures .items > .item:nth-child(5) .title {
+  display: none;
+}
+
+.VPFeatures .items > .item:nth-child(5) .details {
+  color: white;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px 16px;
+  border-radius: 8px;
+  backdrop-filter: blur(1px);
+  max-height: 72px;
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  left: 8px;
+}
+
+.VPFeatures .items > .item:nth-child(5) .link-text {
+  display: none;
+}
+
+.VPFeatures .items > .item:nth-child(5) .icon {
+  display: none;
+}
+
+/* Testing & Profiling карточка с фоном */
+.VPFeatures .items > .item:nth-child(6) .box {
+  position: relative;
+  background-image: url('/images/testing_profiling.png');
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+  min-height: 230px;
+  border-radius: 12px;
+}
+
+.VPFeatures .items > .item:nth-child(6) .box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.0) 100%
+  );
+  z-index: 0;
+}
+
+.dark .VPFeatures .items > .item:nth-child(6) .box::before {
+  background: linear-gradient(
+    135deg,
+    rgba(30, 30, 32, 0.92) 0%,
+    rgba(30, 30, 32, 0.85) 50%,
+    rgba(30, 30, 32, 0.7) 100%
+  );
+}
+
+.VPFeatures .items > .item:nth-child(6) .box > * {
+  position: relative;
+  z-index: 1;
+}
+
+.VPFeatures .items > .item:nth-child(6) .title {
+  display: none;
+}
+
+.VPFeatures .items > .item:nth-child(6) .details {
+  color: white;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px 16px;
+  border-radius: 8px;
+  backdrop-filter: blur(1px);
+  max-height: 72px;
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  left: 8px;
+}
+
+.VPFeatures .items > .item:nth-child(6) .link-text {
+  display: none;
+}
+
+.VPFeatures .items > .item:nth-child(6) .icon {
+  display: none;
+}

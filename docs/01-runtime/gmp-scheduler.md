@@ -488,40 +488,210 @@ func handoffp(pp *p) {
 
 ## GOMAXPROCS
 
-### CPU-bound vs IO-bound
-
-| Нагрузка | Рекомендация | Причина |
-|----------|--------------|---------|
-| CPU-bound | `GOMAXPROCS = NumCPU()` | Больше P = context switch overhead |
-| IO-bound | `GOMAXPROCS = NumCPU()` или больше | M блокируются на IO, P простаивают |
-| Mixed | Тестировать под нагрузкой | Зависит от соотношения |
-
-### Container-aware (Go 1.25)
+`GOMAXPROCS` определяет количество P (логических процессоров), которые могут одновременно выполнять Go-код. По умолчанию равен `runtime.NumCPU()`.
 
 ```go
-import _ "go.uber.org/automaxprocs"
+// Получить текущее значение (0 не меняет, только возвращает)
+current := runtime.GOMAXPROCS(0)
 
-// Или вручную
-func init() {
-    if quota := getContainerCPUQuota(); quota > 0 {
-        runtime.GOMAXPROCS(int(quota))
+// Установить новое значение
+runtime.GOMAXPROCS(4)
+```
+
+### Как GOMAXPROCS влияет на планировщик
+
+```
+GOMAXPROCS = 2:                    GOMAXPROCS = 4:
+┌─────┐ ┌─────┐                    ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐
+│ P0  │ │ P1  │                    │ P0  │ │ P1  │ │ P2  │ │ P3  │
+│ LRQ │ │ LRQ │                    │ LRQ │ │ LRQ │ │ LRQ │ │ LRQ │
+└──┬──┘ └──┬──┘                    └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘
+   │       │                          │       │       │       │
+┌──┴──┐ ┌──┴──┐                    ┌──┴──┐ ┌──┴──┐ ┌──┴──┐ ┌──┴──┐
+│ M0  │ │ M1  │                    │ M0  │ │ M1  │ │ M2  │ │ M3  │
+└─────┘ └─────┘                    └─────┘ └─────┘ └─────┘ └─────┘
+Max 2 горутины                     Max 4 горутины
+выполняются параллельно            выполняются параллельно
+```
+
+**Ключевой момент**: GOMAXPROCS ограничивает только количество P. Количество M (OS threads) может быть больше — M создаются при blocking syscalls и паркуются когда не нужны.
+
+### CPU-bound vs IO-bound
+
+#### CPU-bound нагрузка
+
+Задачи, которые постоянно используют CPU: вычисления, сжатие, шифрование, парсинг.
+
+```go
+// CPU-bound: вычисление хэшей
+func hashFiles(files []string) {
+    for _, f := range files {
+        data, _ := os.ReadFile(f)
+        sha256.Sum256(data) // CPU работает 100% времени
     }
 }
 ```
 
-::: tip Go 1.25
-В Go 1.25 добавлена автоматическая детекция container CPU limits через cgroups v2.
+**Почему `GOMAXPROCS = NumCPU()` оптимален:**
+
+- Каждое ядро CPU может выполнять только один поток в единицу времени
+- Если P > CPU cores, лишние P будут ждать в очереди на выполнение
+- Каждое переключение между P на одном ядре — это context switch (~1-10μs)
+- При `GOMAXPROCS = 8` на 4-ядерном CPU: 4 P работают, 4 P ждут, удваивая context switches
+
+```
+4 CPU cores, GOMAXPROCS = 8:
+
+Core 0: P0 ──▶ P4 ──▶ P0 ──▶ P4   (постоянные переключения)
+Core 1: P1 ──▶ P5 ──▶ P1 ──▶ P5
+Core 2: P2 ──▶ P6 ──▶ P2 ──▶ P6
+Core 3: P3 ──▶ P7 ──▶ P3 ──▶ P7
+        ↑         ↑
+        context switches = overhead без пользы
+```
+
+#### IO-bound нагрузка
+
+Задачи, которые часто ждут внешние ресурсы: сеть, диск, базы данных.
+
+```go
+// IO-bound: HTTP запросы
+func fetchURLs(urls []string) {
+    for _, url := range urls {
+        resp, _ := http.Get(url) // 99% времени ждём сеть
+        io.Copy(io.Discard, resp.Body)
+        resp.Body.Close()
+    }
+}
+```
+
+**Почему `GOMAXPROCS > NumCPU()` может помочь (но не всегда):**
+
+При blocking syscall (сетевой запрос, файловый IO) происходит handoff:
+
+```
+Горутина делает syscall:
+
+1. M0 отдаёт P0 другому M      2. P0 продолжает работать
+┌─────┐                        ┌─────┐
+│ P0  │──→ handoff ──→         │ P0  │
+└──┬──┘                        └──┬──┘
+   │                              │
+┌──┴──┐                        ┌──┴──┐
+│ M0  │ (blocked on syscall)   │ M1  │ (выполняет другие G)
+└─────┘                        └─────┘
+```
+
+Однако сетевые операции в Go используют **netpoller** (epoll/kqueue) и не блокируют M. Поэтому даже при IO-bound нагрузке GOMAXPROCS > NumCPU() даёт минимальный выигрыш.
+
+**Когда увеличение GOMAXPROCS реально помогает:**
+- CGO вызовы, которые блокируют M
+- Blocking syscalls без netpoller (некоторые файловые операции)
+- DNS резолвинг через системный резолвер
+
+#### Практические рекомендации
+
+| Нагрузка | GOMAXPROCS | Обоснование |
+|----------|------------|-------------|
+| CPU-bound | `NumCPU()` | Больше P только добавит context switch overhead |
+| IO-bound (net) | `NumCPU()` | Netpoller не блокирует M, лишние P не помогут |
+| IO-bound (CGO/syscalls) | `NumCPU() * 2` | Компенсирует заблокированные M |
+| Неизвестно | `NumCPU()`, затем профилировать | `schedtrace` покажет утилизацию P |
+
+### Container-aware (Go 1.25)
+
+**Проблема**: в контейнере `runtime.NumCPU()` возвращает количество CPU хоста, а не лимит контейнера.
+
+```bash
+# Контейнер с лимитом 2 CPU на 64-ядерном хосте
+docker run --cpus=2 myapp
+
+# Внутри контейнера:
+# runtime.NumCPU() = 64  ← видит все ядра хоста!
+# GOMAXPROCS = 64        ← создаст 64 P для 2 CPU quota
+```
+
+Результат: 64 P конкурируют за 2 CPU, массивный context switch overhead, CPU throttling от cgroups.
+
+**Решение до Go 1.25** — библиотека uber-go/automaxprocs:
+
+```go
+import _ "go.uber.org/automaxprocs"
+
+// Автоматически читает /sys/fs/cgroup/cpu.max (cgroups v2)
+// или /sys/fs/cgroup/cpu/cpu.cfs_quota_us (cgroups v1)
+// и устанавливает GOMAXPROCS = quota / period
+```
+
+**Go 1.25+** — автоматическая детекция:
+
+```go
+// runtime автоматически определяет CPU quota из cgroups v2
+// Больше не нужны внешние библиотеки
+
+// Ручная проверка:
+func init() {
+    // Go 1.25 уже учёл container limits
+    fmt.Printf("GOMAXPROCS=%d\n", runtime.GOMAXPROCS(0))
+}
+```
+
+::: warning Kubernetes
+В Kubernetes CPU limits используют cgroups. Без корректного GOMAXPROCS приложение создаст слишком много P и получит CPU throttling, что выглядит как случайные задержки.
 :::
 
 ### Динамическое изменение
 
-```go
-// Можно менять в runtime
-old := runtime.GOMAXPROCS(8)
-defer runtime.GOMAXPROCS(old)
+GOMAXPROCS можно менять во время выполнения программы. Это атомарная операция, но вызывает Stop-The-World паузу для перебалансировки P.
 
-// Для временной нагрузки
-runtime.GOMAXPROCS(runtime.NumCPU() * 2)
+```go
+// Получить текущее значение без изменения
+current := runtime.GOMAXPROCS(0)
+
+// Временно увеличить для тяжёлой операции
+func heavyComputation() {
+    old := runtime.GOMAXPROCS(runtime.NumCPU() * 2)
+    defer runtime.GOMAXPROCS(old)
+
+    // ... computation ...
+}
+```
+
+**Когда это полезно:**
+
+```go
+// Пример: ограничение параллелизма для rate-limited API
+func processWithRateLimit(items []Item) {
+    // Ограничиваем до 4 параллельных запросов
+    old := runtime.GOMAXPROCS(4)
+    defer runtime.GOMAXPROCS(old)
+
+    var wg sync.WaitGroup
+    for _, item := range items {
+        wg.Add(1)
+        go func(it Item) {
+            defer wg.Done()
+            callExternalAPI(it)
+        }(item)
+    }
+    wg.Wait()
+}
+```
+
+::: danger Не используйте GOMAXPROCS для ограничения concurrency
+Лучше использовать worker pool или semaphore. GOMAXPROCS влияет на всю программу, а не на конкретную операцию.
+:::
+
+```go
+// Правильный способ — semaphore
+sem := make(chan struct{}, 4)
+for _, item := range items {
+    sem <- struct{}{} // acquire
+    go func(it Item) {
+        defer func() { <-sem }() // release
+        callExternalAPI(it)
+    }(item)
+}
 ```
 
 ## Состояния горутин
@@ -739,10 +909,7 @@ for {
 
 3. **Async Preemption** (Go 1.14+) решает проблему tight loops, но понимание cooperative preemption важно для legacy кода
 
-4. **GOMAXPROCS** — не серебряная пуля:
-   - **CPU-bound задачи** (вычисления, сжатие, криптография): `GOMAXPROCS = NumCPU()` оптимален, больше P не ускорит — CPU уже загружены на 100%, а лишние P только добавят overhead на context switch
-   - **IO-bound задачи** (HTTP-запросы, БД, файловый ввод-вывод): `GOMAXPROCS > NumCPU()` может помочь — пока одни горутины ждут IO, другие P могут выполнять полезную работу. Но M всё равно паркуются при блокировке, поэтому выигрыш ограничен
-   - **Смешанная нагрузка**: начните с `NumCPU()`, профилируйте, увеличивайте если видите низкую утилизацию CPU при высоком latency
+4. **GOMAXPROCS** — для большинства случаев `NumCPU()` оптимален. Увеличение помогает только при blocking CGO/syscalls. В контейнерах критично учитывать CPU limits
 
 5. **schedtrace** — первый инструмент диагностики проблем с планировщиком
 

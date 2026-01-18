@@ -1104,6 +1104,8 @@ Producer ─────────▶│ A B C D E F │
                Consumer (main goroutine)
 ```
 
+<WorkerPoolAnimation />
+
 ```go
 func processItems(items []Item, workers int) {
     // 1. Создаём два канала с буфером на все элементы

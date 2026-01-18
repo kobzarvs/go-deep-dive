@@ -20,6 +20,7 @@ import GCPhaseSimulator from './components/GCPhaseSimulator.vue'
 import TricolorMarkingDemo from './components/TricolorMarkingDemo.vue'
 import GCTraceExplorer from './components/GCTraceExplorer.vue'
 import GCPacingCalculator from './components/GCPacingCalculator.vue'
+import WorkerPoolAnimation from './components/WorkerPoolAnimation.vue'
 
 export default {
   extends: DefaultTheme,
@@ -43,5 +44,6 @@ export default {
     app.component('TricolorMarkingDemo', TricolorMarkingDemo)
     app.component('GCTraceExplorer', GCTraceExplorer)
     app.component('GCPacingCalculator', GCPacingCalculator)
+    app.component('WorkerPoolAnimation', WorkerPoolAnimation)
   }
 } satisfies Theme

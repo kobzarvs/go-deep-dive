@@ -600,44 +600,261 @@ func fetchURLs(urls []string) {
 
 ### Container-aware (Go 1.25)
 
-**Проблема**: в контейнере `runtime.NumCPU()` возвращает количество CPU хоста, а не лимит контейнера.
+#### Проблема: NumCPU() в контейнерах
+
+`runtime.NumCPU()` использует системный вызов, который возвращает количество CPU **хоста**, игнорируя ограничения контейнера:
 
 ```bash
-# Контейнер с лимитом 2 CPU на 64-ядерном хосте
+# 64-ядерный хост, контейнер с лимитом 2 CPU
 docker run --cpus=2 myapp
 
 # Внутри контейнера:
 # runtime.NumCPU() = 64  ← видит все ядра хоста!
-# GOMAXPROCS = 64        ← создаст 64 P для 2 CPU quota
+# GOMAXPROCS = 64        ← по умолчанию равен NumCPU()
 ```
 
-Результат: 64 P конкурируют за 2 CPU, массивный context switch overhead, CPU throttling от cgroups.
+**Результат**: 64 P конкурируют за квоту в 2 CPU. Планировщик Go пытается загрузить все 64 P работой, но cgroups душит процесс после исчерпания квоты.
 
-**Решение до Go 1.25** — библиотека uber-go/automaxprocs:
+#### Как работает CPU throttling
+
+Linux cgroups ограничивает CPU время через механизм квот:
+
+```
+cgroups v2: /sys/fs/cgroup/cpu.max
+Формат: $QUOTA $PERIOD (микросекунды)
+Пример: "200000 100000" = 200ms из каждых 100ms = 2 CPU
+
+cgroups v1: /sys/fs/cgroup/cpu/cpu.cfs_quota_us
+            /sys/fs/cgroup/cpu/cpu.cfs_period_us
+```
+
+```
+Временная шкала (period = 100ms, quota = 200ms = 2 CPU):
+
+0ms        100ms      200ms      300ms
+│──────────│──────────│──────────│
+│▓▓▓▓▓▓▓▓▓▓│░░░░░░░░░░│▓▓▓▓▓▓▓▓▓▓│  ← CPU 0
+│▓▓▓▓▓▓▓▓▓▓│░░░░░░░░░░│▓▓▓▓▓▓▓▓▓▓│  ← CPU 1
+│░░░░░░░░░░│░░░░░░░░░░│░░░░░░░░░░│  ← CPU 2-63 (квота исчерпана)
+
+▓ = работает    ░ = throttled (ждёт новый period)
+```
+
+При 64 P на 2 CPU квоте:
+- Каждый P получает ~3% CPU времени вместо 100%
+- Постоянные context switches между 64 P
+- Периодические "заморозки" когда квота исчерпана (throttling)
+
+#### Диагностика throttling
+
+```bash
+# Проверить текущий throttling (cgroups v2)
+cat /sys/fs/cgroup/cpu.stat
+# usage_usec 123456789     ← использованное CPU время
+# nr_periods 12345         ← количество periods
+# nr_throttled 1234        ← сколько раз throttled (должно быть ~0!)
+# throttled_usec 56789000  ← время в throttled состоянии
+
+# Проверить лимиты
+cat /sys/fs/cgroup/cpu.max
+# 200000 100000  ← quota period (2 CPU)
+```
+
+```go
+// Программная проверка throttling
+func checkThrottling() {
+    data, _ := os.ReadFile("/sys/fs/cgroup/cpu.stat")
+    // Парсим nr_throttled — если растёт, GOMAXPROCS слишком большой
+    fmt.Println(string(data))
+}
+```
+
+::: danger Симптомы неправильного GOMAXPROCS в контейнере
+- **P99 latency spikes** — периодические задержки когда квота исчерпана
+- **Нестабильный throughput** — пилообразный график RPS
+- **Высокий CPU usage** при низкой полезной работе — overhead на context switches
+- **nr_throttled растёт** в cpu.stat
+:::
+
+#### Решение до Go 1.25: automaxprocs
 
 ```go
 import _ "go.uber.org/automaxprocs"
 
-// Автоматически читает /sys/fs/cgroup/cpu.max (cgroups v2)
-// или /sys/fs/cgroup/cpu/cpu.cfs_quota_us (cgroups v1)
-// и устанавливает GOMAXPROCS = quota / period
+// При импорте автоматически:
+// 1. Определяет cgroups v1 или v2
+// 2. Читает quota и period
+// 3. Вычисляет: GOMAXPROCS = quota / period (округление вниз)
+// 4. Вызывает runtime.GOMAXPROCS()
 ```
 
-**Go 1.25+** — автоматическая детекция:
+Как automaxprocs вычисляет значение:
 
 ```go
-// runtime автоматически определяет CPU quota из cgroups v2
-// Больше не нужны внешние библиотеки
+// Псевдокод логики automaxprocs
+func determineGOMAXPROCS() int {
+    // Пробуем cgroups v2
+    if data, err := os.ReadFile("/sys/fs/cgroup/cpu.max"); err == nil {
+        // Формат: "quota period" или "max period"
+        var quota, period int
+        fmt.Sscanf(string(data), "%d %d", &quota, &period)
+        if quota > 0 {
+            return quota / period // например 200000/100000 = 2
+        }
+    }
 
-// Ручная проверка:
-func init() {
-    // Go 1.25 уже учёл container limits
-    fmt.Printf("GOMAXPROCS=%d\n", runtime.GOMAXPROCS(0))
+    // Fallback на cgroups v1
+    quota, _ := readInt("/sys/fs/cgroup/cpu/cpu.cfs_quota_us")
+    period, _ := readInt("/sys/fs/cgroup/cpu/cpu.cfs_period_us")
+    if quota > 0 && period > 0 {
+        return quota / period
+    }
+
+    // Нет лимитов — используем NumCPU()
+    return runtime.NumCPU()
 }
 ```
 
-::: warning Kubernetes
-В Kubernetes CPU limits используют cgroups. Без корректного GOMAXPROCS приложение создаст слишком много P и получит CPU throttling, что выглядит как случайные задержки.
+#### Go 1.25+: встроенная поддержка
+
+Go 1.25 добавил автоматическое определение CPU лимитов контейнера в runtime:
+
+```go
+// runtime/os_linux.go (Go 1.25+)
+func osinit() {
+    ncpu = getproccount() // сначала читает /proc/cpuinfo
+
+    // Новое: проверяем cgroups quota
+    if quota := getCgroupCPUQuota(); quota > 0 {
+        if quota < ncpu {
+            ncpu = quota
+        }
+    }
+}
+```
+
+**Что изменилось:**
+- `runtime.NumCPU()` теперь учитывает cgroups v2 лимиты
+- `GOMAXPROCS` по умолчанию корректен в контейнерах
+- Библиотека automaxprocs больше не нужна (но не вредит)
+
+```go
+// Go 1.25+ — просто работает
+func main() {
+    // В контейнере с --cpus=2:
+    fmt.Println(runtime.NumCPU())      // 2 (не 64!)
+    fmt.Println(runtime.GOMAXPROCS(0)) // 2
+}
+```
+
+#### Kubernetes: requests vs limits
+
+В Kubernetes CPU ресурсы задаются двумя параметрами:
+
+```yaml
+resources:
+  requests:
+    cpu: "500m"    # 0.5 CPU — для планировщика K8s
+  limits:
+    cpu: "2000m"   # 2 CPU — жёсткий лимит (cgroups quota)
+```
+
+**requests** — минимум гарантированного CPU, используется планировщиком K8s для размещения пода. Не влияет на cgroups.
+
+**limits** — максимум CPU, транслируется в cgroups quota. Именно это значение видит Go runtime.
+
+```
+K8s spec                 cgroups v2
+─────────────────────────────────────────
+cpu.limits: 2000m   →   cpu.max: "200000 100000"
+cpu.limits: 500m    →   cpu.max: "50000 100000"
+cpu.limits: не задан →  cpu.max: "max 100000" (без лимита)
+```
+
+::: warning Частая ошибка
+```yaml
+# Плохо: нет limits, только requests
+resources:
+  requests:
+    cpu: "500m"
+# GOMAXPROCS = NumCPU() хоста (может быть 64+)
+# Pod получит минимум 0.5 CPU, но Go создаст 64 P
+
+# Хорошо: явные limits
+resources:
+  requests:
+    cpu: "500m"
+  limits:
+    cpu: "2000m"
+# GOMAXPROCS = 2 (Go 1.25+ автоматически)
+```
+:::
+
+#### Дробные CPU лимиты
+
+Что происходит при лимите меньше 1 CPU:
+
+```yaml
+limits:
+  cpu: "500m"  # 0.5 CPU
+```
+
+```go
+// Go округляет вниз, минимум 1
+// 500m → quota=50000, period=100000 → 50000/100000 = 0 → GOMAXPROCS = 1
+runtime.GOMAXPROCS(0) // 1
+```
+
+При `GOMAXPROCS=1` с квотой 0.5 CPU:
+- Один P работает 50ms из каждых 100ms
+- Остальные 50ms — throttled
+- Это нормально для sidecar контейнеров и лёгких сервисов
+
+#### Ручная настройка в контейнерах
+
+Иногда автоматика не подходит:
+
+```go
+func init() {
+    // Переопределить автоматическое значение
+    if v := os.Getenv("GOMAXPROCS"); v != "" {
+        n, _ := strconv.Atoi(v)
+        runtime.GOMAXPROCS(n)
+        return
+    }
+
+    // Или программно для специфичных случаев
+    // Например: CGO-heavy приложение, нужно больше M
+    quota := getContainerCPUQuota()
+    if quota > 0 {
+        runtime.GOMAXPROCS(quota * 2) // удвоенное значение для CGO
+    }
+}
+```
+
+```dockerfile
+# Dockerfile / docker-compose
+ENV GOMAXPROCS=4
+
+# Kubernetes
+env:
+  - name: GOMAXPROCS
+    value: "4"
+```
+
+::: tip Мониторинг в production
+Добавьте метрики для отслеживания:
+```go
+// Prometheus metrics
+prometheus.MustRegister(prometheus.NewGaugeFunc(
+    prometheus.GaugeOpts{Name: "go_gomaxprocs"},
+    func() float64 { return float64(runtime.GOMAXPROCS(0)) },
+))
+prometheus.MustRegister(prometheus.NewGaugeFunc(
+    prometheus.GaugeOpts{Name: "go_num_cpu"},
+    func() float64 { return float64(runtime.NumCPU()) },
+))
+```
 :::
 
 ### Динамическое изменение

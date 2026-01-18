@@ -21,6 +21,18 @@ import TricolorMarkingDemo from './components/TricolorMarkingDemo.vue'
 import GCTraceExplorer from './components/GCTraceExplorer.vue'
 import GCPacingCalculator from './components/GCPacingCalculator.vue'
 import WorkerPoolAnimation from './components/WorkerPoolAnimation.vue'
+import GoroutineLifecycleSimulator from './components/GoroutineLifecycleSimulator.vue'
+import ChannelInternalsViz from './components/ChannelInternalsViz.vue'
+import MutexStateViz from './components/MutexStateViz.vue'
+import ContextTreeViz from './components/ContextTreeViz.vue'
+import SelectSimulator from './components/SelectSimulator.vue'
+import ConcurrencyOverviewDiagram from './components/ConcurrencyOverviewDiagram.vue'
+import RaceConditionDemo from './components/RaceConditionDemo.vue'
+import HappensBeforeViz from './components/HappensBeforeViz.vue'
+import WaitGroupSimulator from './components/WaitGroupSimulator.vue'
+import DeadlockDemo from './components/DeadlockDemo.vue'
+import PipelineVisualizer from './components/PipelineVisualizer.vue'
+import InteractiveModal from './components/InteractiveModal.vue'
 
 export default {
   extends: DefaultTheme,
@@ -45,5 +57,17 @@ export default {
     app.component('GCTraceExplorer', GCTraceExplorer)
     app.component('GCPacingCalculator', GCPacingCalculator)
     app.component('WorkerPoolAnimation', WorkerPoolAnimation)
+    app.component('GoroutineLifecycleSimulator', GoroutineLifecycleSimulator)
+    app.component('ChannelInternalsViz', ChannelInternalsViz)
+    app.component('MutexStateViz', MutexStateViz)
+    app.component('ContextTreeViz', ContextTreeViz)
+    app.component('SelectSimulator', SelectSimulator)
+    app.component('ConcurrencyOverviewDiagram', ConcurrencyOverviewDiagram)
+    app.component('RaceConditionDemo', RaceConditionDemo)
+    app.component('HappensBeforeViz', HappensBeforeViz)
+    app.component('WaitGroupSimulator', WaitGroupSimulator)
+    app.component('DeadlockDemo', DeadlockDemo)
+    app.component('PipelineVisualizer', PipelineVisualizer)
+    app.component('InteractiveModal', InteractiveModal)
   }
 } satisfies Theme

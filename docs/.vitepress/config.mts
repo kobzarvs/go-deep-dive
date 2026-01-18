@@ -34,12 +34,16 @@ export default defineConfig({
       },
       {
         text: '2. Concurrency',
-        collapsed: true,
+        collapsed: false,
         items: [
           { text: 'Введение', link: '/02-concurrency/' },
           { text: 'Goroutines', link: '/02-concurrency/goroutines' },
           { text: 'Channels', link: '/02-concurrency/channels' },
           { text: 'Context', link: '/02-concurrency/context' },
+          { text: 'sync Primitives', link: '/02-concurrency/sync-primitives' },
+          { text: 'Atomic Operations', link: '/02-concurrency/atomic' },
+          { text: 'Memory Model', link: '/02-concurrency/memory-model' },
+          { text: 'Patterns', link: '/02-concurrency/patterns' },
         ]
       },
       {

@@ -76,7 +76,7 @@ go-deep-dive/
 
 ## 📚 Содержание
 
-1. **Runtime & Memory** — GMP, GC, Stack/Heap
+1. **Memory** — GMP, GC, Stack/Heap
 2. **Concurrency** — Goroutines, Channels, Context
 3. **Data Structures** — Slice, Map, String internals
 4. **Generics** — Type parameters, constraints

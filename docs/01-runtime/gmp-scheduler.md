@@ -1061,7 +1061,19 @@ heavyWork()
 
 Для ограничения параллелизма конкретной операции используйте worker pool или semaphore вместо изменения GOMAXPROCS:
 
-**Worker Pool:**
+**Worker Pool**
+
+Фиксированное количество горутин-воркеров обрабатывает задачи из общей очереди. Количество горутин не растёт с количеством задач.
+
+*Когда использовать:*
+- CPU-bound задачи (оптимально `workers = GOMAXPROCS`)
+- Длительные операции с предсказуемым временем выполнения
+- Когда важен порядок обработки (FIFO через канал)
+
+*Особенности:*
+- Горутины переиспользуются — нет overhead на создание/уничтожение
+- Память предсказуема: N воркеров + буфер канала
+- Легко добавить graceful shutdown через `context`
 
 ```go
 func processItems(items []Item, workers int) {
@@ -1090,7 +1102,20 @@ func processItems(items []Item, workers int) {
 }
 ```
 
-**Semaphore (golang.org/x/sync/semaphore):**
+**Semaphore (golang.org/x/sync/semaphore)**
+
+Ограничивает количество одновременно выполняемых операций. Горутины создаются динамически, но не более N могут работать параллельно.
+
+*Когда использовать:*
+- IO-bound задачи (rate limiting к внешним API)
+- Разная длительность задач
+- Нужна отмена через `context`
+- Weighted семафор для задач разной "стоимости"
+
+*Особенности:*
+- Поддержка `context` для таймаутов и отмены
+- `TryAcquire()` для non-blocking проверки
+- Weighted: можно "занимать" разное количество слотов
 
 ```go
 import "golang.org/x/sync/semaphore"
@@ -1102,7 +1127,7 @@ func processWithLimit(ctx context.Context, items []Item, limit int64) {
     for _, item := range items {
         wg.Add(1)
 
-        // Ждём слот
+        // Ждём слот (блокируется или возвращает ошибку по ctx)
         if err := sem.Acquire(ctx, 1); err != nil {
             wg.Done()
             continue
@@ -1119,7 +1144,19 @@ func processWithLimit(ctx context.Context, items []Item, limit int64) {
 }
 ```
 
-**Buffered Channel как semaphore:**
+**Buffered Channel как semaphore**
+
+Простейший паттерн без внешних зависимостей. Размер буфера канала = максимальный параллелизм.
+
+*Когда использовать:*
+- Не хочется тянуть `golang.org/x/sync`
+- Простые случаи без таймаутов
+- Быстрый прототип
+
+*Особенности:*
+- Zero dependencies — только stdlib
+- Нет поддержки `context` из коробки (можно добавить через `select`)
+- Нет weighted семантики
 
 ```go
 func processWithChannelSem(items []Item, limit int) {
@@ -1140,6 +1177,16 @@ func processWithChannelSem(items []Item, limit int) {
     wg.Wait()
 }
 ```
+
+**Сравнение подходов:**
+
+| Критерий | Worker Pool | Semaphore | Buffered Channel |
+|----------|-------------|-----------|------------------|
+| Количество горутин | Фиксированное | Динамическое (до N) | Динамическое (до N) |
+| Context support | Нужно добавлять | Встроено | Через select |
+| Weighted операции | Нет | Да | Нет |
+| Dependencies | Нет | `x/sync` | Нет |
+| Лучше для | CPU-bound | IO-bound с таймаутами | Простые случаи |
 
 #### Мониторинг изменений GOMAXPROCS
 

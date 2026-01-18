@@ -1075,32 +1075,77 @@ heavyWork()
 - Память предсказуема: N воркеров + буфер канала
 - Легко добавить graceful shutdown через `context`
 
+**Схема работы Worker Pool:**
+
+```
+items: [A, B, C, D, E, F, G, H]     workers = 3
+
+                    jobs channel
+                   ┌─────────────┐
+Producer ─────────▶│ A B C D E F │
+(main goroutine)   └──────┬──────┘
+                          │
+          ┌───────────────┼───────────────┐
+          ▼               ▼               ▼
+     ┌─────────┐    ┌─────────┐    ┌─────────┐
+     │ Worker 1│    │ Worker 2│    │ Worker 3│
+     │ A → Ra  │    │ B → Rb  │    │ C → Rc  │
+     │ D → Rd  │    │ E → Re  │    │ F → Rf  │
+     │ G → Rg  │    │         │    │ H → Rh  │
+     └────┬────┘    └────┬────┘    └────┬────┘
+          │              │              │
+          └──────────────┼──────────────┘
+                         ▼
+                  results channel
+                 ┌───────────────┐
+                 │Ra Rb Rc Rd ...│
+                 └───────┬───────┘
+                         ▼
+               Consumer (main goroutine)
+```
+
 ```go
 func processItems(items []Item, workers int) {
-    jobs := make(chan Item, len(items))
-    results := make(chan Result, len(items))
+    // 1. Создаём два канала с буфером на все элементы
+    jobs := make(chan Item, len(items))      // очередь задач
+    results := make(chan Result, len(items)) // очередь результатов
 
-    // Фиксированное количество воркеров
+    // 2. Запускаем N воркеров (горутин)
+    // Каждый воркер — бесконечный цикл, читающий из jobs
     for i := 0; i < workers; i++ {
         go func() {
+            // range по каналу: читает пока канал не закрыт
             for item := range jobs {
+                // Обрабатываем задачу и пишем результат
                 results <- process(item)
             }
+            // Воркер завершается когда jobs закрыт и пуст
         }()
     }
 
-    // Отправляем задачи
+    // 3. Producer: отправляем все задачи в очередь
     for _, item := range items {
-        jobs <- item
+        jobs <- item // блокируется если буфер полон
     }
-    close(jobs)
+    close(jobs) // сигнал воркерам: задач больше не будет
 
-    // Собираем результаты
+    // 4. Consumer: собираем все результаты
+    // Знаем точное количество — по числу items
     for range items {
-        <-results
+        <-results // порядок результатов НЕ гарантирован!
     }
 }
 ```
+
+::: warning Порядок результатов
+Результаты приходят в порядке завершения обработки, а не в порядке входных данных. Если нужен исходный порядок — передавайте индекс вместе с задачей:
+```go
+type indexedJob struct {
+    index int
+    item  Item
+}
+```
+:::
 
 **Semaphore (golang.org/x/sync/semaphore)**
 

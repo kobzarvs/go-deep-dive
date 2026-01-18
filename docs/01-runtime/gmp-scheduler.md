@@ -859,57 +859,314 @@ prometheus.MustRegister(prometheus.NewGaugeFunc(
 
 ### Динамическое изменение
 
-GOMAXPROCS можно менять во время выполнения программы. Это атомарная операция, но вызывает Stop-The-World паузу для перебалансировки P.
+`runtime.GOMAXPROCS(n)` можно вызывать в любой момент выполнения программы. Функция возвращает предыдущее значение и устанавливает новое (если `n > 0`).
 
 ```go
 // Получить текущее значение без изменения
 current := runtime.GOMAXPROCS(0)
 
-// Временно увеличить для тяжёлой операции
-func heavyComputation() {
-    old := runtime.GOMAXPROCS(runtime.NumCPU() * 2)
-    defer runtime.GOMAXPROCS(old)
+// Установить новое значение, сохранить старое
+old := runtime.GOMAXPROCS(8)
 
-    // ... computation ...
+// Вернуть обратно
+runtime.GOMAXPROCS(old)
+```
+
+#### Что происходит внутри runtime
+
+При вызове `GOMAXPROCS(n)` runtime выполняет сложную процедуру изменения количества P:
+
+```go
+// runtime/proc.go (упрощённо)
+func GOMAXPROCS(n int) int {
+    lock(&sched.lock)
+    ret := int(gomaxprocs)
+
+    if n <= 0 || n == ret {
+        unlock(&sched.lock)
+        return ret
+    }
+
+    // STW: остановить все P
+    stopTheWorldGC("GOMAXPROCS")
+
+    // Изменить количество P
+    procresize(int32(n))
+
+    // Возобновить выполнение
+    startTheWorld()
+
+    unlock(&sched.lock)
+    return ret
 }
 ```
 
-**Когда это полезно:**
+**Ключевой момент**: изменение GOMAXPROCS требует **Stop-The-World паузы**.
+
+#### Почему нужен STW
+
+Изменение количества P — это структурная перестройка планировщика:
+
+```
+GOMAXPROCS: 4 → 2 (уменьшение)
+
+До:                          После:
+┌────┐ ┌────┐ ┌────┐ ┌────┐  ┌────┐ ┌────┐
+│ P0 │ │ P1 │ │ P2 │ │ P3 │  │ P0 │ │ P1 │
+│LRQ │ │LRQ │ │LRQ │ │LRQ │  │LRQ │ │LRQ │
+│ 5G │ │ 3G │ │ 7G │ │ 2G │  │12G │ │ 5G │  ← горутины перераспределены
+└────┘ └────┘ └────┘ └────┘  └────┘ └────┘
+                              ↑
+                              P2, P3 уничтожены,
+                              их горутины переданы P0, P1
+```
+
+При уменьшении GOMAXPROCS:
+1. "Лишние" P останавливаются
+2. Горутины из их LRQ перемещаются в GRQ или другие P
+3. mcache освобождаются
+4. M отсоединяются от P и паркуются
+
+При увеличении GOMAXPROCS:
+1. Создаются новые структуры P
+2. Выделяются mcache для каждого P
+3. Запускаются (или пробуждаются) M для новых P
+4. Горутины из GRQ распределяются по новым P
+
+#### Стоимость операции
 
 ```go
-// Пример: ограничение параллелизма для rate-limited API
-func processWithRateLimit(items []Item) {
-    // Ограничиваем до 4 параллельных запросов
-    old := runtime.GOMAXPROCS(4)
+// Измерение стоимости GOMAXPROCS
+func BenchmarkGOMAXPROCS(b *testing.B) {
+    for i := 0; i < b.N; i++ {
+        runtime.GOMAXPROCS(4)
+        runtime.GOMAXPROCS(8)
+    }
+}
+// Результат: ~50-200μs на операцию (зависит от количества горутин)
+```
+
+**Факторы, влияющие на длительность STW:**
+- Количество активных горутин (больше G → дольше перераспределение)
+- Разница между старым и новым значением
+- Размер LRQ на каждом P
+- Количество M, которые нужно остановить
+
+::: danger Не вызывайте GOMAXPROCS в hot path
+```go
+// Плохо: STW на каждый запрос
+func HandleRequest(w http.ResponseWriter, r *http.Request) {
+    runtime.GOMAXPROCS(runtime.NumCPU()) // STW пауза!
+    // ...
+}
+
+// Хорошо: один раз при старте
+func main() {
+    runtime.GOMAXPROCS(runtime.NumCPU())
+    http.ListenAndServe(":8080", nil)
+}
+```
+:::
+
+#### Потокобезопасность
+
+`GOMAXPROCS` потокобезопасен — можно вызывать из любой горутины. Однако concurrent вызовы сериализуются через `sched.lock`:
+
+```go
+// Два параллельных вызова — один будет ждать
+go runtime.GOMAXPROCS(4) // захватывает sched.lock
+go runtime.GOMAXPROCS(8) // ждёт освобождения lock
+```
+
+#### Реальные use cases
+
+**1. Адаптация к нагрузке (редко оправдано):**
+
+```go
+// Автоматическая подстройка под нагрузку
+func adaptiveGOMAXPROCS(ctx context.Context) {
+    ticker := time.NewTicker(30 * time.Second)
+    defer ticker.Stop()
+
+    for {
+        select {
+        case <-ctx.Done():
+            return
+        case <-ticker.C:
+            // Читаем метрики CPU
+            usage := getCurrentCPUUsage()
+            current := runtime.GOMAXPROCS(0)
+
+            if usage > 90 && current < runtime.NumCPU() {
+                // Высокая нагрузка — добавляем P
+                runtime.GOMAXPROCS(current + 1)
+                log.Printf("GOMAXPROCS increased to %d", current+1)
+            } else if usage < 30 && current > 1 {
+                // Низкая нагрузка — уменьшаем P (экономим ресурсы)
+                runtime.GOMAXPROCS(current - 1)
+                log.Printf("GOMAXPROCS decreased to %d", current-1)
+            }
+        }
+    }
+}
+```
+
+::: warning Почему это редко нужно
+Go планировщик уже адаптивен: неактивные P не потребляют CPU. Динамическое изменение GOMAXPROCS имеет смысл только в специфичных сценариях (multi-tenant системы, жёсткие требования к изоляции ресурсов).
+:::
+
+**2. Тестирование race conditions:**
+
+```go
+func TestRaceCondition(t *testing.T) {
+    // Тест с разным уровнем параллелизма
+    for _, procs := range []int{1, 2, 4, 8} {
+        t.Run(fmt.Sprintf("GOMAXPROCS=%d", procs), func(t *testing.T) {
+            old := runtime.GOMAXPROCS(procs)
+            defer runtime.GOMAXPROCS(old)
+
+            // Тест с повышенным шансом race condition
+            testConcurrentAccess(t)
+        })
+    }
+}
+```
+
+**3. Изоляция CPU-heavy операций:**
+
+```go
+// Ограничение CPU для фоновых задач
+func runBackgroundJob(job Job) {
+    // Уменьшаем параллелизм для фоновой работы
+    // чтобы не мешать основным запросам
+    old := runtime.GOMAXPROCS(2)
     defer runtime.GOMAXPROCS(old)
 
+    job.Execute()
+}
+```
+
+::: danger Проблема глобального состояния
+`GOMAXPROCS` — глобальная настройка. Изменение в одной горутине влияет на **всю программу**:
+
+```go
+// Горутина A                    // Горутина B (HTTP handler)
+runtime.GOMAXPROCS(1)            // Внезапно работает на 1 P!
+defer runtime.GOMAXPROCS(old)    // Latency вырос в N раз
+heavyWork()
+```
+:::
+
+#### Правильные альтернативы
+
+Для ограничения параллелизма конкретной операции используйте worker pool или semaphore вместо изменения GOMAXPROCS:
+
+**Worker Pool:**
+
+```go
+func processItems(items []Item, workers int) {
+    jobs := make(chan Item, len(items))
+    results := make(chan Result, len(items))
+
+    // Фиксированное количество воркеров
+    for i := 0; i < workers; i++ {
+        go func() {
+            for item := range jobs {
+                results <- process(item)
+            }
+        }()
+    }
+
+    // Отправляем задачи
+    for _, item := range items {
+        jobs <- item
+    }
+    close(jobs)
+
+    // Собираем результаты
+    for range items {
+        <-results
+    }
+}
+```
+
+**Semaphore (golang.org/x/sync/semaphore):**
+
+```go
+import "golang.org/x/sync/semaphore"
+
+func processWithLimit(ctx context.Context, items []Item, limit int64) {
+    sem := semaphore.NewWeighted(limit)
     var wg sync.WaitGroup
+
     for _, item := range items {
         wg.Add(1)
+
+        // Ждём слот
+        if err := sem.Acquire(ctx, 1); err != nil {
+            wg.Done()
+            continue
+        }
+
         go func(it Item) {
             defer wg.Done()
-            callExternalAPI(it)
+            defer sem.Release(1)
+            process(it)
         }(item)
     }
+
     wg.Wait()
 }
 ```
 
-::: danger Не используйте GOMAXPROCS для ограничения concurrency
-Лучше использовать worker pool или semaphore. GOMAXPROCS влияет на всю программу, а не на конкретную операцию.
-:::
+**Buffered Channel как semaphore:**
 
 ```go
-// Правильный способ — semaphore
-sem := make(chan struct{}, 4)
-for _, item := range items {
-    sem <- struct{}{} // acquire
-    go func(it Item) {
-        defer func() { <-sem }() // release
-        callExternalAPI(it)
-    }(item)
+func processWithChannelSem(items []Item, limit int) {
+    sem := make(chan struct{}, limit)
+    var wg sync.WaitGroup
+
+    for _, item := range items {
+        wg.Add(1)
+        sem <- struct{}{} // acquire (блокируется если limit достигнут)
+
+        go func(it Item) {
+            defer wg.Done()
+            defer func() { <-sem }() // release
+            process(it)
+        }(item)
+    }
+
+    wg.Wait()
 }
 ```
+
+#### Мониторинг изменений GOMAXPROCS
+
+```go
+// Логирование изменений для отладки
+var lastGOMAXPROCS int32
+
+func init() {
+    lastGOMAXPROCS = int32(runtime.GOMAXPROCS(0))
+
+    go func() {
+        for {
+            time.Sleep(time.Second)
+            current := int32(runtime.GOMAXPROCS(0))
+            if current != atomic.LoadInt32(&lastGOMAXPROCS) {
+                log.Printf("GOMAXPROCS changed: %d → %d",
+                    atomic.LoadInt32(&lastGOMAXPROCS), current)
+                atomic.StoreInt32(&lastGOMAXPROCS, current)
+            }
+        }
+    }()
+}
+```
+
+::: tip Рекомендация
+В 99% случаев оставляйте GOMAXPROCS по умолчанию (`NumCPU()`). Динамическое изменение — это низкоуровневый инструмент для специфичных сценариев, не средство управления concurrency.
+:::
 
 ## Состояния горутин
 

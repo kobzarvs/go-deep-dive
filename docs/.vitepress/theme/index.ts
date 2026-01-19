@@ -33,6 +33,7 @@ import WaitGroupSimulator from './components/WaitGroupSimulator.vue'
 import DeadlockDemo from './components/DeadlockDemo.vue'
 import PipelineVisualizer from './components/PipelineVisualizer.vue'
 import InteractiveModal from './components/InteractiveModal.vue'
+import DataStructuresOverview from './components/DataStructuresOverview.vue'
 
 export default {
   extends: DefaultTheme,
@@ -69,5 +70,6 @@ export default {
     app.component('DeadlockDemo', DeadlockDemo)
     app.component('PipelineVisualizer', PipelineVisualizer)
     app.component('InteractiveModal', InteractiveModal)
+    app.component('DataStructuresOverview', DataStructuresOverview)
   }
 } satisfies Theme

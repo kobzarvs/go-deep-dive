@@ -1,6 +1,7 @@
 import DefaultTheme from 'vitepress/theme'
 import type { Theme } from 'vitepress'
 import { inject } from '@vercel/analytics'
+import { injectSpeedInsights } from '@vercel/speed-insights'
 import './custom.css'
 import Layout from './Layout.vue'
 import SliceMemoryDiagram from './components/SliceMemoryDiagram.vue'
@@ -40,9 +41,10 @@ export default {
   extends: DefaultTheme,
   Layout,
   enhanceApp({ app, router, siteData }) {
-    // Vercel Analytics - только на клиенте
+    // Vercel Analytics & Speed Insights - только на клиенте
     if (!import.meta.env.SSR) {
       inject()
+      injectSpeedInsights()
     }
     app.component('SliceMemoryDiagram', SliceMemoryDiagram)
     app.component('SliceMutationBug', SliceMutationBug)

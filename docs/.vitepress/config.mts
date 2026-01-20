@@ -80,7 +80,7 @@ export default defineConfig({
   },
   
   themeConfig: {
-    logo: '/images/logo.png',
+    logo: { src: '/images/logo.png', width: 42, height: 42 },
     
     nav: [
       { text: 'Главная', link: '/' },

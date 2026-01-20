@@ -1,3 +1,9 @@
+/* Размер логотипа в навбаре */
+.VPNavBarTitle .logo {
+  width: 42px !important;
+  height: 42px !important;
+}
+
 /* Переменные VitePress */
 :root {
   /* ASCII диаграммы — плотный line-height для псевдографики */

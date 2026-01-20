@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://go-deep-dive.com/sitemap.xml
+
+# Crawl-delay (optional, be nice to the server)
+Crawl-delay: 1
+
+# Disallow admin/api paths if any
+Disallow: /api/

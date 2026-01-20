@@ -8,9 +8,75 @@ export default defineConfig({
   lang: 'ru-RU',
   
   head: [
+    // Fonts
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
     ['link', { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap' }],
+
+    // SEO Meta
+    ['meta', { name: 'author', content: 'Valeriy Kobzar' }],
+    ['meta', { name: 'keywords', content: 'Go, Golang, Go 1.25, runtime, GMP scheduler, garbage collector, concurrency, goroutines, channels, slice, map, generics, Senior разработчик, программирование' }],
+    ['meta', { name: 'robots', content: 'index, follow' }],
+    ['meta', { name: 'googlebot', content: 'index, follow' }],
+    ['link', { rel: 'canonical', href: 'https://go-deep-dive.com/' }],
+
+    // Favicon
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/images/logo.svg' }],
+    ['link', { rel: 'apple-touch-icon', sizes: '180x180', href: '/images/apple-touch-icon.png' }],
+
+    // Open Graph
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:title', content: 'Go Deep Dive — Go 1.25 для Senior разработчиков' }],
+    ['meta', { property: 'og:description', content: 'Техническая книга о Go: Runtime internals, GMP Scheduler, Garbage Collector, Concurrency, Data Structures. Без воды — только механика.' }],
+    ['meta', { property: 'og:image', content: 'https://go-deep-dive.com/images/og-image.jpg' }],
+    ['meta', { property: 'og:image:width', content: '1200' }],
+    ['meta', { property: 'og:image:height', content: '630' }],
+    ['meta', { property: 'og:url', content: 'https://go-deep-dive.com/' }],
+    ['meta', { property: 'og:site_name', content: 'Go Deep Dive' }],
+    ['meta', { property: 'og:locale', content: 'ru_RU' }],
+
+    // Twitter Card
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:title', content: 'Go Deep Dive — Go 1.25 для Senior разработчиков' }],
+    ['meta', { name: 'twitter:description', content: 'Техническая книга о Go: Runtime internals, GMP Scheduler, Garbage Collector, Concurrency, Data Structures.' }],
+    ['meta', { name: 'twitter:image', content: 'https://go-deep-dive.com/images/og-image.jpg' }],
+
+    // JSON-LD Structured Data
+    ['script', { type: 'application/ld+json' }, JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      'name': 'Go Deep Dive',
+      'description': 'Техническая книга о Go 1.25 для Senior разработчиков',
+      'url': 'https://go-deep-dive.com/',
+      'author': {
+        '@type': 'Person',
+        'name': 'Valeriy Kobzar',
+        'url': 'https://github.com/kobzarvs'
+      },
+      'inLanguage': 'ru-RU',
+      'keywords': 'Go, Golang, runtime, concurrency, goroutines, channels'
+    })],
+
+    // JSON-LD Book
+    ['script', { type: 'application/ld+json' }, JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Book',
+      'name': 'Go Deep Dive',
+      'author': {
+        '@type': 'Person',
+        'name': 'Valeriy Kobzar'
+      },
+      'url': 'https://go-deep-dive.com/',
+      'image': 'https://go-deep-dive.com/images/og-image.jpg',
+      'inLanguage': 'ru',
+      'genre': 'Программирование',
+      'about': 'Go programming language internals'
+    })],
   ],
+
+  // Sitemap
+  sitemap: {
+    hostname: 'https://go-deep-dive.com'
+  },
   
   themeConfig: {
     logo: '/images/logo.svg',

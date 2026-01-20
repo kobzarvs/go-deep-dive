@@ -89,8 +89,11 @@ div.aside-container {
   border-radius: 16px;
   background: linear-gradient(
     135deg,
+    /*rgba(255, 255, 255, 0.92) 0%,*/
+    /*rgba(255, 255, 255, 0) 90%,*/
+    /*rgba(255, 255, 255, 0) 100%*/
     rgba(255, 255, 255, 0.92) 0%,
-    rgba(255, 255, 255, 0) 90%,
+    rgba(255, 255, 255, 0.1) 60%,
     rgba(255, 255, 255, 0) 100%
   );
   z-index: 0;
@@ -102,13 +105,13 @@ div.aside-container {
   z-index: 1;
 }
 
-/* Dark mode */
+/* Dark mode — легче overlay чтобы изображение было видно */
 .dark .VPHero .container::before {
   background: linear-gradient(
     135deg,
-    rgba(30, 30, 32, 0.95) 0%,
-    rgba(30, 30, 32, 0.88) 40%,
-    rgba(30, 30, 32, 0.65) 100%
+    rgba(30, 30, 32, 0.55) 0%,
+    rgba(30, 30, 32, 0.3) 40%,
+    rgba(30, 30, 32, 0.2) 100%
   );
 }
 
@@ -127,6 +130,25 @@ div.aside-container {
 
 .dark .VPHero .text {
   text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+}
+
+/* Tagline с подложкой для читаемости */
+.VPHero .tagline {
+  background: rgba(30, 30, 32, 0.35);
+  color: #fff !important;
+  margin-top: 24px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  display: inline-block;
+  backdrop-filter: blur(4px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode: светлый фон с тёмным текстом для контраста */
+.dark .VPHero .tagline {
+  background: rgba(255, 255, 255, 0.1);
+  /*color: #1e1e20 !important;*/
+  text-shadow: none;
 }
 
 /* Отступ по бокам на мобильных */
@@ -196,9 +218,9 @@ div.aside-container {
 .dark .VPFeatures .items > .item:nth-child(1) .box::before {
   background: linear-gradient(
     135deg,
-    rgba(30, 30, 32, 0.92) 0%,
-    rgba(30, 30, 32, 0.85) 50%,
-    rgba(30, 30, 32, 0.7) 100%
+    rgba(30, 30, 32, 0.55) 0%,
+    rgba(30, 30, 32, 0.3) 50%,
+    rgba(30, 30, 32, 0.2) 100%
   );
 }
 
@@ -265,9 +287,9 @@ div.aside-container {
 .dark .VPFeatures .items > .item:nth-child(2) .box::before {
   background: linear-gradient(
     135deg,
-    rgba(30, 30, 32, 0.92) 0%,
-    rgba(30, 30, 32, 0.85) 50%,
-    rgba(30, 30, 32, 0.7) 100%
+    rgba(30, 30, 32, 0.55) 0%,
+    rgba(30, 30, 32, 0.3) 50%,
+    rgba(30, 30, 32, 0.2) 100%
   );
 }
 
@@ -333,9 +355,9 @@ div.aside-container {
 .dark .VPFeatures .items > .item:nth-child(3) .box::before {
   background: linear-gradient(
     135deg,
-    rgba(30, 30, 32, 0.92) 0%,
-    rgba(30, 30, 32, 0.85) 50%,
-    rgba(30, 30, 32, 0.7) 100%
+    rgba(30, 30, 32, 0.55) 0%,
+    rgba(30, 30, 32, 0.3) 50%,
+    rgba(30, 30, 32, 0.2) 100%
   );
 }
 
@@ -401,9 +423,9 @@ div.aside-container {
 .dark .VPFeatures .items > .item:nth-child(4) .box::before {
   background: linear-gradient(
     135deg,
-    rgba(30, 30, 32, 0.92) 0%,
-    rgba(30, 30, 32, 0.85) 50%,
-    rgba(30, 30, 32, 0.7) 100%
+    rgba(30, 30, 32, 0.55) 0%,
+    rgba(30, 30, 32, 0.3) 50%,
+    rgba(30, 30, 32, 0.2) 100%
   );
 }
 
@@ -469,9 +491,9 @@ div.aside-container {
 .dark .VPFeatures .items > .item:nth-child(5) .box::before {
   background: linear-gradient(
     135deg,
-    rgba(30, 30, 32, 0.92) 0%,
-    rgba(30, 30, 32, 0.85) 50%,
-    rgba(30, 30, 32, 0.7) 100%
+    rgba(30, 30, 32, 0.55) 0%,
+    rgba(30, 30, 32, 0.3) 50%,
+    rgba(30, 30, 32, 0.2) 100%
   );
 }
 
@@ -537,9 +559,9 @@ div.aside-container {
 .dark .VPFeatures .items > .item:nth-child(6) .box::before {
   background: linear-gradient(
     135deg,
-    rgba(30, 30, 32, 0.92) 0%,
-    rgba(30, 30, 32, 0.85) 50%,
-    rgba(30, 30, 32, 0.7) 100%
+    rgba(30, 30, 32, 0.55) 0%,
+    rgba(30, 30, 32, 0.3) 50%,
+    rgba(30, 30, 32, 0.2) 100%
   );
 }
 

@@ -302,7 +302,23 @@ r, size := utf8.DecodeRuneInString("Привет")
 
 ## String interning
 
-Go **не делает автоматический interning** (в отличие от Java). Каждый `string([]byte{...})` создаёт новую строку:
+**String interning** — техника оптимизации памяти, при которой одинаковые строки хранятся в единственном экземпляре. Вместо создания дубликатов, все ссылки указывают на один объект в специальном пуле (intern pool).
+
+```
+Без interning:                    С interning:
+┌─────────┐                       ┌─────────┐
+│ var a ──┼──▶ "hello" (0x100)    │ var a ──┼──┐
+└─────────┘                       └─────────┘  │
+┌─────────┐                       ┌─────────┐  ▼
+│ var b ──┼──▶ "hello" (0x200)    │ var b ──┼──▶ "hello" (intern pool)
+└─────────┘                       └─────────┘  ▲
+┌─────────┐                       ┌─────────┐  │
+│ var c ──┼──▶ "hello" (0x300)    │ var c ──┼──┘
+└─────────┘                       └─────────┘
+   3 аллокации                       1 аллокация
+```
+
+Go **не делает автоматический interning** (в отличие от Java, где строковые литералы и результаты `String.intern()` автоматически попадают в пул). Каждый `string([]byte{...})` создаёт новую строку:
 
 ```go
 a := string([]byte{'h', 'e', 'l', 'l', 'o'})
@@ -322,20 +338,134 @@ b := "hello"
 
 ### Substring создаёт alias
 
+Substring в Go **не копирует данные** — он создаёт новый `stringHeader`, указывающий на тот же backing array со смещённым указателем:
+
 ```go
 s := "very long string that takes lots of memory"
 prefix := s[:4]  // "very"
-
-// prefix всё ещё ссылается на ВЕСЬ backing array!
-// GC не может освободить большую строку
 ```
 
-**Решение:** явное копирование
+```
+Исходная строка s:
+┌──────────────────┐
+│ stringHeader     │
+│ ┌──────────────┐ │      Backing array (44 bytes)
+│ │ Data: 0x100 ─┼─┼─────▶┌─────────────────────────────────────────────┐
+│ │ Len:  44     │ │      │ v e r y   l o n g   s t r i n g   t h a ... │
+│ └──────────────┘ │      └─────────────────────────────────────────────┘
+└──────────────────┘        ▲
+                            │
+Substring prefix:           │ (тот же адрес!)
+┌──────────────────┐        │
+│ stringHeader     │        │
+│ ┌──────────────┐ │        │
+│ │ Data: 0x100 ─┼─┼────────┘
+│ │ Len:  4      │ │   ← только длина изменилась
+│ └──────────────┘ │
+└──────────────────┘
+```
+
+**Проблема:** пока `prefix` жив, GC не может освободить весь 44-байтный backing array — даже если оригинальная строка `s` уже не используется.
+
+#### Реальный сценарий утечки памяти
 
 ```go
-prefix := string([]byte(s[:4]))  // или strings.Clone в Go 1.20+
-prefix := strings.Clone(s[:4])   // Go 1.20+
+// ❌ Memory leak: читаем файлы, храним только имена
+var fileNames []string
+
+for _, path := range hugeDirListing {
+    // Каждая строка path может быть 200+ символов:
+    // "/very/long/path/to/some/deeply/nested/directory/file.txt"
+
+    content, _ := os.ReadFile(path)
+    line := string(content)  // Например, 10KB на файл
+
+    // Берём только первые 50 символов как "превью"
+    preview := line[:50]
+    fileNames = append(fileNames, preview)
+
+    // preview держит ссылку на ВСЕ 10KB каждого файла!
+}
+// При 1000 файлов: ожидаем ~50KB, реально ~10MB в памяти
 ```
+
+```
+Ожидание:                          Реальность:
+┌─────────────────┐                ┌─────────────────┐
+│ fileNames[0] ───┼─▶ 50 bytes     │ fileNames[0] ───┼─▶ 10KB (весь файл!)
+│ fileNames[1] ───┼─▶ 50 bytes     │ fileNames[1] ───┼─▶ 10KB
+│ fileNames[2] ───┼─▶ 50 bytes     │ fileNames[2] ───┼─▶ 10KB
+│ ...             │                │ ...             │
+└─────────────────┘                └─────────────────┘
+   ~50KB total                        ~10MB total
+```
+
+#### Решения
+
+**1. `strings.Clone` (Go 1.20+) — рекомендуемый способ:**
+
+```go
+preview := strings.Clone(line[:50])
+```
+
+```
+После Clone:
+┌──────────────────┐
+│ preview          │      Новый backing array (50 bytes)
+│ ┌──────────────┐ │      ┌──────────────────────────────────────────────────┐
+│ │ Data: 0x500 ─┼─┼─────▶│ v e r y   l o n g   s t r i n g   t h a t   t ...│
+│ │ Len:  50     │ │      └──────────────────────────────────────────────────┘
+│ └──────────────┘ │
+└──────────────────┘
+
+Оригинальные 10KB теперь могут быть освобождены GC ✓
+```
+
+**2. Конвертация через `[]byte` (до Go 1.20):**
+
+```go
+preview := string([]byte(line[:50]))
+```
+
+**3. `strings.Builder` для множественных операций:**
+
+```go
+var b strings.Builder
+b.WriteString(line[:50])
+preview := b.String()  // новая аллокация
+```
+
+::: tip Когда alias — это хорошо
+Не всегда нужно копировать. Если substring короткоживущий или оригинал тоже нужен — alias экономит память и CPU:
+
+```go
+func hasPrefix(s, prefix string) bool {
+    if len(s) < len(prefix) {
+        return false
+    }
+    return s[:len(prefix)] == prefix  // alias OK — временный
+}
+```
+:::
+
+::: warning Как обнаружить проблему
+```go
+// Проверить, разделяют ли строки память
+func sharesBackingArray(a, b string) bool {
+    if len(a) == 0 || len(b) == 0 {
+        return false
+    }
+    aStart := uintptr(unsafe.Pointer(unsafe.StringData(a)))
+    aEnd := aStart + uintptr(len(a))
+    bStart := uintptr(unsafe.Pointer(unsafe.StringData(b)))
+    bEnd := bStart + uintptr(len(b))
+
+    return aStart < bEnd && bStart < aEnd  // диапазоны пересекаются
+}
+```
+
+**В pprof:** ищи аллокации строк, которые не соответствуют ожидаемому размеру.
+:::
 
 ### Invalid UTF-8
 

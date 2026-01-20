@@ -58,7 +58,7 @@ Slice и string — **value types с pointer внутри**: при переда
 │                    │           │                                         │      │
 │                    │           ▼                                         │      │
 │                    │ ┌─────────────────────────────────────────────────┐ │      │
-│                    │ │ buckets: [bucket0][bucket1]...[bucket_2^B]     │ │      │
+│                    │ │ buckets: [bucket0][bucket1]...[bucket_2^B]      │ │      │
 │                    │ │          ├─tophash[8]─┤                         │ │      │
 │                    │ │          ├─keys[8]────┤                         │ │      │
 │                    │ │          ├─values[8]──┤                         │ │      │
@@ -69,27 +69,6 @@ Slice и string — **value types с pointer внутри**: при переда
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
-
-## Ключевые файлы runtime/
-
-| Файл | Назначение |
-|------|------------|
-| `runtime/slice.go` | Slice operations, `growslice` |
-| `runtime/map.go` | Map operations, `hmap` structure |
-| `runtime/map_fast*.go` | Optimized ops для int32, int64, string |
-| `runtime/string.go` | String operations, concatenation |
-| `runtime/utf8.go` | UTF-8 encoding/decoding |
-
-## Ключевые константы Go 1.25
-
-| Параметр | Значение | Описание |
-|----------|----------|----------|
-| Slice header size | 24 bytes | `ptr` + `len` + `cap` |
-| String header size | 16 bytes | `ptr` + `len` |
-| Map pointer size | 8 bytes | Pointer to `hmap` |
-| Bucket size | 8 k-v pairs | `bucketCnt` в `runtime/map.go` |
-| Growth threshold | 256 | Порог смены стратегии роста slice |
-| Map load factor | 6.5 | `loadFactorNum/loadFactorDen` |
 
 ## Структура раздела
 
@@ -104,153 +83,6 @@ Slice и string — **value types с pointer внутри**: при переда
 
 ### [String & Rune](./string-rune)
 Immutable UTF-8 bytes под капотом. Индексация `s[i]` возвращает byte, не rune. `range` автоматически декодирует UTF-8. `strings.Builder` для эффективной конкатенации. Конвертации `[]byte` ↔ `string` и когда они zero-copy.
-
-::: tip Go 1.21+ пакеты slices и maps
-```go
-// Безопасное копирование без shared backing array
-dst := slices.Clone(src)
-
-// Pre-allocation для известного размера
-s := slices.Grow(s, additionalCapacity)
-
-// Deep copy map
-m2 := maps.Clone(m1)
-
-// Утилиты
-keys := maps.Keys(m)
-values := maps.Values(m)
-```
-:::
-
-## Performance Guidelines
-
-### Slice pre-allocation
-
-```go
-// ❌ Avoid: repeated allocations
-var result []Item
-for _, x := range data {
-    result = append(result, process(x))  // до 20+ аллокаций
-}
-
-// ✅ Better: single allocation
-result := make([]Item, 0, len(data))
-for _, x := range data {
-    result = append(result, process(x))  // 0 аллокаций
-}
-```
-
-### Map initialization
-
-```go
-// ❌ Avoid: multiple evacuations
-m := make(map[string]int)  // начальный размер
-for i := 0; i < 10000; i++ {
-    m[keys[i]] = values[i]  // несколько evacuations
-}
-
-// ✅ Better: hint для начального размера
-m := make(map[string]int, len(keys))
-for i := 0; i < 10000; i++ {
-    m[keys[i]] = values[i]  // 0 evacuations
-}
-```
-
-### String concatenation
-
-```go
-// ❌ Avoid: O(n²) allocations
-s := ""
-for _, part := range parts {
-    s += part  // новая аллокация на каждой итерации
-}
-
-// ✅ Better: O(n) с strings.Builder
-var b strings.Builder
-b.Grow(totalLen)  // optional pre-allocation
-for _, part := range parts {
-    b.WriteString(part)
-}
-s := b.String()
-```
-
-### Map iteration with delete
-
-```go
-// ✅ Safe: прямое удаление во время итерации
-for k, v := range m {
-    if shouldDelete(v) {
-        delete(m, k)  // безопасно в Go
-    }
-}
-
-// ✅ Alternative: collect-then-delete (clearer intent)
-var toDelete []string
-for k, v := range m {
-    if shouldDelete(v) {
-        toDelete = append(toDelete, k)
-    }
-}
-for _, k := range toDelete {
-    delete(m, k)
-}
-```
-
-## Debugging & Tools
-
-```bash
-# Escape analysis — что уходит на heap
-go build -gcflags="-m -m" ./...
-
-# Memory allocations в бенчмарках
-go test -bench=. -benchmem ./...
-
-# Heap profile — где аллоцируется память
-go tool pprof -alloc_objects http://localhost:6060/debug/pprof/heap
-
-# Bounds check elimination
-go build -gcflags="-d=ssa/check_bce/debug=1" ./...
-
-# Assembly output — что генерирует компилятор
-go build -gcflags="-S" ./...
-```
-
-::: warning Частые ошибки
-
-**1. Slice aliasing**
-```go
-s1 := make([]int, 3, 5)
-s2 := append(s1, 4)  // ⚠️ при cap > len оба смотрят на тот же массив
-s1[0] = 999          // s2[0] тоже станет 999!
-```
-
-**2. Map nil check**
-```go
-var m map[string]int
-_ = m["key"]         // ✅ OK — вернёт zero value
-m["key"] = 1         // ❌ panic: assignment to entry in nil map
-```
-
-**3. String iteration**
-```go
-for i, c := range "Привет" {
-    // i — byte offset (0, 2, 4, 6, 8, 10), не rune index
-    // c — rune (П, р, и, в, е, т)
-}
-```
-
-**4. Map pointer stability**
-```go
-m := map[string]Data{"key": {}}
-ptr := &m["key"]  // ❌ не компилируется — нет стабильных адресов
-m["key"].Field = 1  // ❌ не компилируется — нельзя модифицировать напрямую
-
-// ✅ Решение: извлечь, модифицировать, записать обратно
-d := m["key"]
-d.Field = 1
-m["key"] = d
-```
-:::
 
 ::: info Связь с Runtime
 Операции над структурами данных тесно связаны с memory allocator:

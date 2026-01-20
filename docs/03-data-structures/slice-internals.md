@@ -131,6 +131,57 @@ func growslice(oldPtr unsafe.Pointer, newLen, oldCap, num int, et *_type) slice 
 }
 ```
 
+## Pre-allocation
+
+Если известен итоговый размер — **pre-allocate** capacity:
+
+```go
+// ❌ Avoid: до 20+ аллокаций при росте
+var result []Item
+for _, x := range data {
+    result = append(result, process(x))
+}
+
+// ✅ Better: одна аллокация
+result := make([]Item, 0, len(data))
+for _, x := range data {
+    result = append(result, process(x))  // 0 аллокаций
+}
+```
+
+### Сколько аллокаций без pre-allocation?
+
+При росте от 0 до N элементов происходит ~log₂(N) аллокаций:
+
+| Итоговый размер | Аллокации | Capacity checkpoints |
+|-----------------|-----------|---------------------|
+| 100 | ~7 | 1→2→4→8→16→32→64→128 |
+| 1000 | ~10 | ...→256→512→1024 |
+| 10000 | ~14 | ...→8192→10752 |
+
+### slices.Grow — добавить capacity
+
+```go
+import "slices"
+
+// Гарантировать место для ещё N элементов
+s = slices.Grow(s, n)
+
+// Эквивалент:
+if cap(s)-len(s) < n {
+    s = append(make([]T, 0, len(s)+n), s...)
+}
+```
+
+### Ключевые константы
+
+| Параметр | Значение | Описание |
+|----------|----------|----------|
+| Slice header size | 24 bytes | `ptr` + `len` + `cap` (64-bit) |
+| Growth threshold | 256 | Порог смены стратегии роста |
+| Growth < 256 | ×2 | Удвоение capacity |
+| Growth ≥ 256 | ~×1.25 | Плавный рост |
+
 ## Escape analysis
 
 Компилятор решает где разместить backing array:
@@ -153,6 +204,145 @@ go build -gcflags="-m" main.go
 # ./main.go:4:11: make([]int, 3) escapes to heap
 ```
 
-## Темы для изучения
+## Пакет slices (Go 1.21+)
+
+Стандартный пакет `slices` — первый выбор для операций над slice. Zero dependencies, оптимизирован, generic.
+
+```go
+import "slices"
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ПОИСК
+// ═══════════════════════════════════════════════════════════════════════════
+
+users := []string{"alice", "bob", "charlie"}
+
+slices.Contains(users, "bob")           // true — O(n)
+slices.Index(users, "charlie")          // 2, или -1 если не найден
+
+// Бинарный поиск — O(log n), требует отсортированный slice
+ids := []int{1, 5, 10, 25, 50, 100}
+idx, found := slices.BinarySearch(ids, 25)  // idx=3, found=true
+
+// Поиск с условием
+slices.IndexFunc(users, func(u string) bool {
+    return strings.HasPrefix(u, "ch")
+})  // 2
+
+// ═══════════════════════════════════════════════════════════════════════════
+// СОРТИРОВКА
+// ═══════════════════════════════════════════════════════════════════════════
+
+numbers := []int{3, 1, 4, 1, 5, 9, 2, 6}
+slices.Sort(numbers)        // in-place: [1, 1, 2, 3, 4, 5, 6, 9]
+slices.IsSorted(numbers)    // true
+
+// Кастомная сортировка
+type User struct { Name string; Age int }
+users := []User{{"Bob", 30}, {"Alice", 25}}
+slices.SortFunc(users, func(a, b User) int {
+    return cmp.Compare(a.Age, b.Age)
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// МОДИФИКАЦИЯ
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Clone — безопасная копия без shared backing array
+clone := slices.Clone(original)
+
+// Reverse in-place
+slices.Reverse(numbers)
+
+// Compact — удаляет ПОСЛЕДОВАТЕЛЬНЫЕ дубликаты
+data := []int{1, 1, 2, 2, 2, 3, 1}
+data = slices.Compact(data)  // [1, 2, 3, 1] — НЕ все дубликаты!
+
+// Для всех дубликатов: Sort + Compact
+slices.Sort(data)
+data = slices.Compact(data)  // [1, 2, 3]
+
+// Insert, Delete, Replace
+s := []int{1, 2, 5, 6}
+s = slices.Insert(s, 2, 3, 4)    // [1, 2, 3, 4, 5, 6]
+s = slices.Delete(s, 1, 3)       // [1, 4, 5, 6]
+s = slices.Replace(s, 1, 3, 10)  // [1, 10, 6]
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ПАМЯТЬ
+// ═══════════════════════════════════════════════════════════════════════════
+
+s = slices.Grow(s, 1000)  // гарантировать cap для ещё 1000 элементов
+s = slices.Clip(s)        // уменьшить cap до len
+
+// ═══════════════════════════════════════════════════════════════════════════
+// СРАВНЕНИЕ
+// ═══════════════════════════════════════════════════════════════════════════
+
+slices.Equal(a, b)       // true если равны
+slices.Compare(a, b)     // -1, 0, 1 (лексикографически)
+```
+
+## samber/lo для slice
+
+[github.com/samber/lo](https://github.com/samber/lo) — когда stdlib недостаточно.
+
+```go
+import "github.com/samber/lo"
+
+// Filter, Map, Reduce — чего нет в stdlib
+active := lo.Filter(users, func(u User, _ int) bool {
+    return u.Active
+})
+
+names := lo.Map(users, func(u User, _ int) string {
+    return u.Name
+})
+
+// FilterMap — filter + map в одном проходе
+activeNames := lo.FilterMap(users, func(u User, _ int) (string, bool) {
+    if u.Active { return u.Name, true }
+    return "", false
+})
+
+// GroupBy — группировка по ключу
+byCountry := lo.GroupBy(users, func(u User) string {
+    return u.Country
+})
+
+// Chunk — разбиение на батчи
+for _, batch := range lo.Chunk(records, 100) {
+    db.InsertMany(batch)
+}
+
+// Uniq — уникальные без сортировки (в отличие от slices.Compact)
+unique := lo.Uniq([]int{1, 2, 2, 3, 1})  // [1, 2, 3]
+
+// Set operations
+lo.Union(a, b)        // объединение
+lo.Intersection(a, b) // пересечение
+lo.Difference(a, b)   // разность
+```
+
+::: tip Когда что использовать
+| Задача | stdlib `slices` | `samber/lo` |
+|--------|-----------------|-------------|
+| Sort, Search, Contains | ✅ | — |
+| Clone, Reverse, Compact | ✅ | — |
+| Grow, Clip, Insert/Delete | ✅ | — |
+| **Filter, Map, Reduce** | ❌ | ✅ |
+| **GroupBy, Chunk, Partition** | ❌ | ✅ |
+| **Uniq** (без сортировки) | ❌ | ✅ |
+| **Set operations** | ❌ | ✅ |
+:::
+
+::: warning Производительность lo
+`samber/lo` использует функциональный стиль. Для hot paths с миллионами элементов обычный `for` может быть быстрее из-за инлайнинга.
+:::
+
+## Дальнейшее чтение
 
 - [Slice Append: Shared vs Separate Arrays](./slice-append.md) — когда append мутирует чужие данные
+- [Go Slices: usage and internals](https://go.dev/blog/slices-intro) — официальный блог
+- [slices package](https://pkg.go.dev/slices) — документация
+- Исходники: `$GOROOT/src/runtime/slice.go`

@@ -1,5 +1,6 @@
 import DefaultTheme from 'vitepress/theme'
 import type { Theme } from 'vitepress'
+import { inject } from '@vercel/analytics'
 import './custom.css'
 import Layout from './Layout.vue'
 import SliceMemoryDiagram from './components/SliceMemoryDiagram.vue'
@@ -38,7 +39,11 @@ import DataStructuresOverview from './components/DataStructuresOverview.vue'
 export default {
   extends: DefaultTheme,
   Layout,
-  enhanceApp({ app }) {
+  enhanceApp({ app, router, siteData }) {
+    // Vercel Analytics - только на клиенте
+    if (!import.meta.env.SSR) {
+      inject()
+    }
     app.component('SliceMemoryDiagram', SliceMemoryDiagram)
     app.component('SliceMutationBug', SliceMutationBug)
     app.component('SliceStructure', SliceStructure)

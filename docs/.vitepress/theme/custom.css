@@ -1,13 +1,21 @@
-/* ASCII диаграммы — плотный line-height для псевдографики */
-.vp-doc div[class*="language-"] pre code {
-  line-height: 1.2;
-}
-
-/* Расширяем layout */
-
+/* Переменные VitePress */
 :root {
+  /* ASCII диаграммы — плотный line-height для псевдографики */
+  /* Синхронизируем line-height кода и line numbers */
+  --vp-code-line-height: 1.2;
   /* Левый sidebar — уже */
   --vp-sidebar-width: 240px;
+}
+
+.vp-doc div[class*="language-"] pre code {
+  line-height: var(--vp-code-line-height);
+}
+
+/* Отключить line numbers в интерактивных компонентах */
+.layout-diagram .line-number,
+.modal-body .line-number,
+.overview-diagram .line-number {
+  display: none !important;
 }
 
 /* Правый TOC — принудительно шире */

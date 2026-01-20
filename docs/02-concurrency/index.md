@@ -1,5 +1,9 @@
 # Concurrency в Go
 
+<div class="hero-section">
+  <img src="/images/concurrency.avif" alt="Concurrency" class="hero-image" />
+</div>
+
 Go был спроектирован с учётом конкурентности как первоклассной концепции. В отличие от большинства языков, где concurrency — это библиотечная надстройка, в Go она встроена в сам язык и runtime.
 
 ## TL;DR: Примитивы конкурентности

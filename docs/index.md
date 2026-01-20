@@ -14,35 +14,33 @@ hero:
       link: https://github.com/kobzarvs/go-deep-dive
 
 features:
-  - icon: ⚡
-    title: Runtime & Memory
+  - title: Runtime & Memory
     details: GMP Scheduler, Garbage Collector "Green Tea", Stack vs Heap, DWARF 5
     link: /01-runtime/
     linkText: Читать →
-  - icon: 🔄
-    title: Concurrency
+  - title: Concurrency
     details: Goroutines internals, Channels, Context, testing/synctest
     link: /02-concurrency/
     linkText: Читать →
-  - icon: 📊
-    title: Data Structures
+  - title: Data Structures
     details: Slice, Map, String internals — как они устроены под капотом
     link: /03-data-structures/
     linkText: Читать →
-  - icon: 🧬
-    title: Generics
+  - title: Interfaces
+    details: iface/eface, itab, type assertions, interface composition
+    link: /04-interfaces/
+    linkText: Читать →
+  - title: Generics
     details: Type parameters, constraints, core types removal в Go 1.25
-    link: /04-generics/
+    link: /05-generics/
     linkText: Читать →
-  - icon: 🔮
-    title: Stdlib Magic
+  - title: Stdlib Magic
     details: unsafe, reflect, cgo, compiler directives, go:embed
-    link: /05-stdlib-magic/
+    link: /06-stdlib-magic/
     linkText: Читать →
-  - icon: 📈
-    title: Testing & Profiling
+  - title: Testing & Profiling
     details: pprof, trace, FlightRecorder API, fuzzing, bisect tool
-    link: /10-testing/
+    link: /11-testing/
     linkText: Читать →
 ---
 

@@ -1,5 +1,9 @@
 # Runtime & Memory
 
+<div class="hero-section">
+  <img src="/images/runtime_and_memory.avif" alt="Runtime & Memory" class="hero-image" />
+</div>
+
 Go занимает уникальную нишу между интерпретируемыми языками с VM и классическими compiled языками. Это не Java с JIT и не C с прямым маппингом на железо — Go компилируется в нативный код, но при этом включает **runtime**, который работает вместе с вашим кодом.
 
 Понимание runtime критично для Senior разработчика по нескольким причинам:

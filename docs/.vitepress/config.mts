@@ -58,73 +58,80 @@ export default defineConfig({
         ]
       },
       {
-        text: '4. Generics',
+        text: '4. Interfaces',
         collapsed: true,
         items: [
-          { text: 'Введение', link: '/04-generics/' },
+          { text: 'Введение', link: '/04-interfaces/' },
         ]
       },
       {
-        text: '5. Stdlib Magic',
+        text: '5. Generics',
         collapsed: true,
         items: [
-          { text: 'Введение', link: '/05-stdlib-magic/' },
+          { text: 'Введение', link: '/05-generics/' },
         ]
       },
       {
-        text: '6. Errors & Observability',
+        text: '6. Stdlib Magic',
         collapsed: true,
         items: [
-          { text: 'Введение', link: '/06-errors-observability/' },
+          { text: 'Введение', link: '/06-stdlib-magic/' },
         ]
       },
       {
-        text: '7. Architecture',
+        text: '7. Errors & Observability',
         collapsed: true,
         items: [
-          { text: 'Введение', link: '/07-architecture/' },
+          { text: 'Введение', link: '/07-errors-observability/' },
         ]
       },
       {
-        text: '8. Microservices',
+        text: '8. Architecture',
         collapsed: true,
         items: [
-          { text: 'Введение', link: '/08-microservices/' },
+          { text: 'Введение', link: '/08-architecture/' },
         ]
       },
       {
-        text: '9. Databases',
+        text: '9. Microservices',
         collapsed: true,
         items: [
-          { text: 'Введение', link: '/09-databases/' },
+          { text: 'Введение', link: '/09-microservices/' },
         ]
       },
       {
-        text: '10. Testing & Optimization',
+        text: '10. Databases',
         collapsed: true,
         items: [
-          { text: 'Введение', link: '/10-testing/' },
+          { text: 'Введение', link: '/10-databases/' },
         ]
       },
       {
-        text: '11. Security',
+        text: '11. Testing & Optimization',
         collapsed: true,
         items: [
-          { text: 'Введение', link: '/11-security/' },
+          { text: 'Введение', link: '/11-testing/' },
         ]
       },
       {
-        text: '12. Infrastructure',
+        text: '12. Security',
         collapsed: true,
         items: [
-          { text: 'Введение', link: '/12-infrastructure/' },
+          { text: 'Введение', link: '/12-security/' },
         ]
       },
       {
-        text: '13. System Design',
+        text: '13. Infrastructure',
         collapsed: true,
         items: [
-          { text: 'Введение', link: '/13-system-design/' },
+          { text: 'Введение', link: '/13-infrastructure/' },
+        ]
+      },
+      {
+        text: '14. System Design',
+        collapsed: true,
+        items: [
+          { text: 'Введение', link: '/14-system-design/' },
         ]
       },
     ],

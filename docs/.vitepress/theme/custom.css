@@ -68,7 +68,7 @@ div.aside-container {
 /* Контейнер hero с фоном */
 .VPHero .container {
   position: relative;
-  background-image: url('/images/go_gopher_deep_dive.png');
+  background-image: url('/images/go_gopher_deep_dive.avif');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -168,7 +168,7 @@ div.aside-container {
 /* Runtime & Memory карточка с фоном */
 .VPFeatures .items > .item:nth-child(1) .box {
   position: relative;
-  background-image: url('/images/runtime_and_memory.png');
+  background-image: url('/images/runtime_and_memory.avif');
   background-size: cover;
   background-position: center;
   overflow: hidden;
@@ -237,7 +237,7 @@ div.aside-container {
 /* Concurrency карточка с фоном */
 .VPFeatures .items > .item:nth-child(2) .box {
   position: relative;
-  background-image: url('/images/concurrency.png');
+  background-image: url('/images/concurrency.avif');
   background-size: cover;
   background-position: center;
   overflow: hidden;
@@ -305,7 +305,7 @@ div.aside-container {
 /* Data Structures карточка с фоном */
 .VPFeatures .items > .item:nth-child(3) .box {
   position: relative;
-  background-image: url('/images/data_structures.png');
+  background-image: url('/images/data_structures.avif');
   background-size: cover;
   background-position: center;
   overflow: hidden;
@@ -373,7 +373,7 @@ div.aside-container {
 /* Generics карточка с фоном */
 .VPFeatures .items > .item:nth-child(4) .box {
   position: relative;
-  background-image: url('/images/generics.png');
+  background-image: url('/images/generics.avif');
   background-size: cover;
   background-position: center;
   overflow: hidden;
@@ -441,7 +441,7 @@ div.aside-container {
 /* Stdlib Magic карточка с фоном */
 .VPFeatures .items > .item:nth-child(5) .box {
   position: relative;
-  background-image: url('/images/stdlib_magic.png');
+  background-image: url('/images/stdlib_magic.avif');
   background-size: cover;
   background-position: center;
   overflow: hidden;
@@ -509,7 +509,7 @@ div.aside-container {
 /* Testing & Profiling карточка с фоном */
 .VPFeatures .items > .item:nth-child(6) .box {
   position: relative;
-  background-image: url('/images/testing_profiling.png');
+  background-image: url('/images/testing_profiling.avif');
   background-size: cover;
   background-position: center;
   overflow: hidden;

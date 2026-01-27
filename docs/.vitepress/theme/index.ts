@@ -36,6 +36,9 @@ import DeadlockDemo from './components/DeadlockDemo.vue'
 import PipelineVisualizer from './components/PipelineVisualizer.vue'
 import InteractiveModal from './components/InteractiveModal.vue'
 import DataStructuresOverview from './components/DataStructuresOverview.vue'
+import InterfaceMemoryViz from './components/InterfaceMemoryViz.vue'
+import NilInterfaceDemo from './components/NilInterfaceDemo.vue'
+import TypeAssertionDebugger from './components/TypeAssertionDebugger.vue'
 
 export default {
   extends: DefaultTheme,
@@ -78,5 +81,8 @@ export default {
     app.component('PipelineVisualizer', PipelineVisualizer)
     app.component('InteractiveModal', InteractiveModal)
     app.component('DataStructuresOverview', DataStructuresOverview)
+    app.component('InterfaceMemoryViz', InterfaceMemoryViz)
+    app.component('NilInterfaceDemo', NilInterfaceDemo)
+    app.component('TypeAssertionDebugger', TypeAssertionDebugger)
   }
 } satisfies Theme

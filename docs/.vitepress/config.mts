@@ -129,6 +129,11 @@ export default defineConfig({
         collapsed: true,
         items: [
           { text: 'Введение', link: '/04-interfaces/' },
+          { text: 'Interface Internals', link: '/04-interfaces/interface-internals' },
+          { text: 'Type Assertions', link: '/04-interfaces/type-assertions' },
+          { text: 'nil Interface Trap', link: '/04-interfaces/nil-interface-trap' },
+          { text: 'Best Practices', link: '/04-interfaces/best-practices' },
+          { text: 'Generics vs Interfaces', link: '/04-interfaces/generics-vs-interfaces' },
         ]
       },
       {
